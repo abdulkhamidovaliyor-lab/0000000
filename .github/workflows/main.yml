@@ -1,0 +1,63 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Prepare web app
+        run: |
+          mkdir -p www
+          cp -r infin_new_app/* www/
+
+      - name: Create Capacitor config
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.infinbank.app",
+            "appName": "InfinBANK",
+            "webDir": "www"
+          }
+          EOF
+
+      - name: Add Android
+        run: npx cap add android
+
+      - name: Install icon tools
+        run: npm install @capacitor/assets --save-dev
+
+      - name: Prepare app icon
+        run: |
+          mkdir -p assets
+          cp app_icon.png assets/icon.png
+
+      - name: Generate Android icons
+        run: npx capacitor-assets generate --android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: InfinBANK-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
